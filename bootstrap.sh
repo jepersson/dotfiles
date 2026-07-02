@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
+echo "==> Configuring GitHub CLI repository..."
+sudo mkdir -p -m 755 /etc/apt/keyrings
+wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
 echo "==> Updating system packages..."
 sudo apt update
-sudo apt install -y git vim universal-ctags curl bash-completion
+sudo apt install -y git vim universal-ctags curl bash-completion gh
 
 echo "==> Managing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
