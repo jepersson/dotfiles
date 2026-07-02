@@ -1,0 +1,21 @@
+[user]
+    # Block commits until user.name and user.email are explicitly set locally per-repo
+    useConfigOnly = true
+
+[core]
+    editor = vim
+    autocrlf = input
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = true
+
+[fetch]
+    prune = true
+
+[push]
+    default = simple
+    autoSetupRemote = true
+
