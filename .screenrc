@@ -1,0 +1,13 @@
+# Core Settings
+startup_message off      # Disable the welcome splash screen
+vbell off                # Disable the irritating visual bell (screen flash)
+defscrollback 50000      # Match our massive Bash history limit
+
+# Status Bar (Ultra-minimalist)
+# Displays the open windows on the left.
+hardstatus alwayslastline
+hardstatus string "%{= kw} %-w%{= bw}%n %t%{-}%+w"
+
+# Disable the lock screen feature (broken in PRoot/UserLAnd environments)
+bind x
+
