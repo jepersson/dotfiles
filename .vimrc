@@ -1,8 +1,19 @@
 " The basics
-filetype plugin indent on   " Filetype detection, language plugins, and indentation
-syntax on                   " Enable syntax parsing
-set t_Co=16                 " Force 16-color ANSI palette for colorscheme
-colorscheme lunaperche      " Select colorscheme
+filetype plugin indent on
+syntax on
+set background=dark
+
+" Load the master theme first
+colorscheme quiet
+
+" 1. The Payload (Data)
+hi String ctermfg=cyan
+hi Constant ctermfg=cyan
+
+" 2. The Glue (Punctuation)
+" Relies on your terminal's ANSI Color 8 mapping
+hi Operator ctermfg=darkgrey
+hi Delimiter ctermfg=darkgrey
 
 " Native Editing
 set backspace=indent,eol,start " Allow backspacing over autoindent, line breaks, etc.
@@ -23,6 +34,7 @@ set shiftround      " Round shift increments to the nearest multiple of shiftwid
 
 " Clean UI and navigation
 set number         " Show absolute line numbers
+set relativenumber " Show relative anywhere else
 set incsearch      " Show search matches instantly as you type
 set hlsearch       " Highlight all search matches
 set ignorecase     " Ignore case when searching...
@@ -64,4 +76,3 @@ augroup MarkdownNativeSetup
     " Formatting: Hook mdformat into Vim's native 'gq' operator
     autocmd FileType markdown setlocal formatprg=mdformat\ -
 augroup END
-
