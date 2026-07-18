@@ -6,14 +6,9 @@ set background=dark
 " Load the master theme first
 colorscheme quiet
 
-" 1. The Payload (Data)
+" Adjust markup with alabaster tweaks
 hi String ctermfg=cyan
 hi Constant ctermfg=cyan
-
-" 2. The Glue (Punctuation)
-" Relies on your terminal's ANSI Color 8 mapping
-hi Operator ctermfg=darkgrey
-hi Delimiter ctermfg=darkgrey
 
 " Native Editing
 set backspace=indent,eol,start " Allow backspacing over autoindent, line breaks, etc.
@@ -52,7 +47,7 @@ set tags=tags;/  " Tell Vim to look for a 'tags' file in the current dir, and se
 " Command to silently regenerate the codebase index, ignoring common bloated dirs
 command! MakeTags silent !ctags -R --exclude=.git --exclude=.venv . | redraw!
 
-" " Python Configuration 
+" Python Configuration 
 augroup PythonNativeSetup
     autocmd!
 
@@ -66,7 +61,7 @@ augroup PythonNativeSetup
     autocmd FileType python setlocal formatprg=ruff\ format\ --quiet\ -
 augroup END
 
-" " Markdown Configuration 
+" Markdown Configuration 
 augroup MarkdownNativeSetup
     autocmd!
 
