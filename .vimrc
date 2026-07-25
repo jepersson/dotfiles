@@ -7,7 +7,6 @@ colorscheme lunaperche
 " Native Editing
 set backspace=indent,eol,start " Allow backspacing over autoindent, line breaks, etc.
 set scrolloff=3                " Keep lines visible above/below the cursor
-set wildmenu                   " Enhanced command-line completion
 
 " Window Splitting
 set splitbelow     " Force horizontal splits to open below the current window
