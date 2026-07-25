@@ -9,7 +9,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubc
 
 echo "==> Updating system packages..."
 sudo apt update
-sudo apt install -y git vim universal-ctags curl bash-completion gh
+sudo apt install -y git vim universal-ctags curl bash-completion gh tmux
 
 echo "==> Managing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
