@@ -62,5 +62,5 @@ augroup MarkdownNativeSetup
     " Enable spell checking strictly for markdown documentation
     autocmd FileType markdown setlocal spell spelllang=en_us
     " Formatting: Hook mdformat into Vim's native 'gq' operator
-    autocmd FileType markdown setlocal formatprg=mdformat\ -
+    autocmd FileType markdown setlocal formatprg=mdformat\ --wrap\ 80\ -
 augroup END
