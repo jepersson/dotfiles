@@ -22,7 +22,7 @@ uv python install
 
 echo "==> Managing CLI tools..."
 uv tool install ruff 2>/dev/null || true
-uv tool install mdformat 2>/dev/null || true
+uv tool install mdformat --with mdformat-gfm 2>/dev/null || true
 uv tool upgrade --all
 
 echo "==> Generating static bash completions..."
