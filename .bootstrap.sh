@@ -30,8 +30,7 @@ echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashi
 
 echo "==> Updating system packages..."
 sudo apt update
-sudo apt install -y git vim universal-ctags curl bash-completion gh tmux \
-    databricks terraform
+sudo apt install -y git vim universal-ctags curl bash-completion gh tmux bubblewrap databricks terraform
 
 echo "==> Managing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
