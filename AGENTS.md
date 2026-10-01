@@ -9,7 +9,7 @@
 
 ## Python
 - Formatter + linter: **ruff** (`ruff format` then `ruff check --fix`). No black/flake8/isort.
-- Target version: Python 3.12. Type hints on public functions.
+- Target version: Python 3.14. Type hints on public functions.
 - Dependency/tooling via **uv** (`uv add`, `uv run`), not pip/poetry.
 - Validator (run before diff): `ruff format . && ruff check .`
 
@@ -27,11 +27,26 @@
 - Validator (run before diff): `databricks bundle validate`
 - Do NOT run `databricks bundle deploy` without explicit user approval.
 
+## Docs in code (READMEs & comments)
+- Comments explain WHY, not WHAT. Comment non-obvious logic, decisions, and
+  gotchas — never narrate self-evident lines. Prefer fewer, higher-signal
+  comments (a local model tends to over-comment; resist it).
+  - Python: docstrings on public functions/classes; skip the obvious.
+  - Terraform: comment non-obvious resources/locals/variables, not every block.
+- READMEs follow a consistent skeleton: Purpose → Prerequisites → Usage/commands
+  → Layout. For these repos include the real commands, e.g. `terraform init/plan`
+  or `databricks bundle validate/deploy`, and the required auth profile.
+- Format markdown with `mdformat --wrap 80 <file>` (matches the editor's wrap).
+- Update the README when a change makes it stale. Do NOT invent docs for code
+  that didn't change.
+
 ## GitHub (issues & PRs)
 - Use the `gh` CLI. Issue titles: imperative, <=70 chars. Bodies: context,
   acceptance criteria, and any source URL the request came from.
 - PR descriptions: summary of changes, what was tested (name the validator run),
   and anything intentionally left out. Link the issue it closes.
+- Branch naming: <TODO e.g. feat/<short-desc>, fix/<short-desc>>.
+- Never push to main/master or merge a PR without explicit approval.
 
 ## Documentation lookup (fetch before guessing)
 When unsure about an API, argument, resource, or schema, use the `fetch` tool
