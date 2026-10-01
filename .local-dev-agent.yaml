@@ -148,6 +148,7 @@ tools:
         - Python (*.py):            ruff format . && ruff check .
         - Terraform (*.tf/*.tfvars): terraform fmt && terraform validate
         - Databricks bundle (*.yml under a bundle): databricks bundle validate
+        - Markdown (*.md, e.g. READMEs): mdformat --wrap 80 <file>
       Then show `git diff` for just the paths you changed, and state which
       validator you ran and that it passed.
     os_env: inherit
