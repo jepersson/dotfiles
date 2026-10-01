@@ -55,6 +55,15 @@ uv tool install mdformat --with mdformat-gfm
 uv tool install omnigent
 uv tool upgrade --all
 
+# MCP fetch server (used by the omnigent agent's `reader` tool to turn a URL
+# into clean markdown) is NOT installed here and does NOT run on Windows.
+# omnigent launches it in WSL2 as a stdio child process via `uvx mcp-server-fetch`,
+# which self-installs on first use through the uv already set up above — so no
+# bootstrap install line is needed. It is a CPU-only HTTP/HTML->markdown process
+# with no GPU need, so (unlike Ollama) it belongs WSL2-side with omnigent, not on
+# Windows. Note: this is the Python reference server (runs via uvx); a JS-rendering
+# fetch MCP would instead need Node/npm added to the apt install list above.
+
 # NOTE: Ollama is intentionally NOT installed inside WSL2.
 # AMD iGPUs (e.g. Radeon 860M, RDNA 3.5 / gfx1150) do not get GPU passthrough
 # into WSL2, so an in-WSL Ollama would fall back to slow CPU-only inference.
