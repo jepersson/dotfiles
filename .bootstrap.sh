@@ -24,13 +24,15 @@ echo "==> Configuring HashiCorp (Terraform) repository..."
 # (unlike the GitHub/Databricks binary keys that pipe straight into `tee`).
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg
 sudo chmod go+r /etc/apt/keyrings/hashicorp.gpg
-# Codename hardcoded (Ubuntu 26.04 = plucky) so we don't depend on lsb-release
-# being installed at this point. Update this one word if you run on another release.
-echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com plucky main" | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+# Codename resolved dynamically via lsb_release (assumed present on standard
+# Ubuntu images), so the repo line tracks whatever release this runs on instead
+# of being pinned to one version.
+echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
 
 echo "==> Updating system packages..."
 sudo apt update
-sudo apt install -y git vim universal-ctags curl bash-completion gh tmux bubblewrap databricks terraform
+sudo apt install -y git vim universal-ctags curl bash-completion gh tmux \
+    bubblewrap databricks terraform
 
 echo "==> Managing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -53,10 +55,44 @@ uv tool install mdformat --with mdformat-gfm
 uv tool install omnigent
 uv tool upgrade --all
 
-echo "==> Managing Ollama (local models)..."
-# Installs the ollama binary + (on systemd hosts) a background service on :11434.
-# Models are pulled manually afterwards, e.g.:  ollama pull <model>
-curl -fsSL https://ollama.com/install.sh | sh
+# NOTE: Ollama is intentionally NOT installed inside WSL2.
+# AMD iGPUs (e.g. Radeon 860M, RDNA 3.5 / gfx1150) do not get GPU passthrough
+# into WSL2, so an in-WSL Ollama would fall back to slow CPU-only inference.
+# Instead, install Ollama natively on Windows (Vulkan backend) and point
+# omnigent at it over the WSL2 -> Windows network bridge.
+#
+# NETWORKING: use WSL2 "mirrored" mode rather than binding Ollama to 0.0.0.0.
+# Ollama has no authentication, so binding to 0.0.0.0 would expose the model
+# server to the whole LAN. Mirrored mode lets WSL2 reach Windows services over
+# localhost while Ollama keeps its default, safe 127.0.0.1:11434 bind.
+#
+# Enable mirrored networking once on the Windows side, in %UserProfile%\.wslconfig:
+#     [wsl2]
+#     networkingMode=mirrored
+# then restart WSL from an elevated PowerShell:  wsl --shutdown
+# (Requires Windows 11 22H2+; leave Ollama on its default loopback bind.)
+#
+# OLLAMA TUNING (set these on the Windows side before starting the Ollama server;
+# e.g. via `setx` then restart Ollama, or in its service environment):
+#     OLLAMA_FLASH_ATTENTION=1     # enables the fused attention fast path
+#     OLLAMA_KV_CACHE_TYPE=q8_0    # ~half the KV memory, near-lossless (NOT q4_0)
+#     OLLAMA_NUM_PARALLEL=1        # serialize requests: one KV cache at a time, so
+#                                  # multiple omnigent sub-agents share the single
+#                                  # ~20GB model instance instead of each needing
+#                                  # its own KV allocation (would blow 24GB budget).
+# Note: sub-agents are separate API clients, NOT separate model instances — the
+# 27B weights load once; only the per-conversation KV cache differs.
+# If flash-attention misbehaves on the Vulkan/iGPU path, drop it and run f16 KV
+# at 24K instead of q8_0 at 32K.
+#
+# Pull a model that fits ~24GB usable, e.g.:
+#     ollama pull qwen3.8-27b         # dense, 24GB reference coder
+#     ollama pull muse-glimmer:30b    # agentic, ~4-bit under 20GB
+#
+# With mirrored mode active, WSL2 reaches the Windows-hosted Ollama via localhost.
+# Point omnigent at it with:
+#     export OLLAMA_HOST="http://localhost:11434"
+# (Add that line to your shell rc, or wire it into omnigent's own config.)
 
 echo "==> Generating static bash completions..."
 COMPLETION_DIR="$HOME/.local/share/bash-completion/completions"
