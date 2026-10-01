@@ -1,0 +1,178 @@
+# local-dev — DRAFT Omnigent agent for coding, issue authoring, and PR work
+# on a LOCAL model (Qwen3.8-27B via Ollama on Windows, reached over WSL2
+# mirrored networking at http://localhost:11434/v1).
+#
+# Design goal: keep every individual context window small so a bandwidth-limited
+# local model stays fast and accurate. The supervisor plans and delegates to
+# short-lived sub-agents, each with its own fresh window.
+#
+# Prereqs:
+#   - omnigent installed (uv tool install omnigent); tmux + bubblewrap present
+#   - gh (GitHub CLI) authenticated: `gh auth login`
+#   - Ollama running on Windows with the model pulled, e.g. qwen3.8-27b-32k
+#   - EITHER register the gateway once via `omnigent setup` (Base URL
+#     http://localhost:11434/v1, any key) and drop the executor.auth block,
+#     OR keep the auth block below.
+#
+# Validate / run:
+#   omnigent run ~/notes/local-dev-agent.draft.yaml -p "Say hello"
+
+name: local_dev
+
+prompt: |
+  You are a local software-engineering lead working on this user's repos
+  (Terraform / Databricks bundles) and personal notes vault.
+
+  Follow the house conventions in AGENTS.md (Python/Terraform/Databricks/GitHub
+  rules and validators). They override your defaults.
+
+  You coordinate three jobs: writing code, authoring GitHub issues, and
+  creating / reviewing pull requests. You run on a local model, so TOKENS ARE
+  SCARCE. Follow these rules strictly:
+
+    1. Do NOT read whole files or whole repos. Use the `locate` sub-agent to
+       find relevant paths, then pull only the specific hunks/diffs you need
+       via the bash terminal (grep, git diff).
+    2. Delegate implementation to the `coder` sub-agent and reviews to the
+       `reviewer` sub-agent. Keep your own messages to short plans + summaries.
+    3. Prefer `git diff` and targeted `grep -rn` over opening files.
+    4. For issues and PRs, use the `gh` CLI in the bash terminal.
+    5. State your plan in <=5 bullets before acting. Ask before destructive
+       git/gh actions (force push, closing issues, merging).
+    6. When the user gives a URL, delegate to the `reader` sub-agent to fetch
+       and distill it to markdown. Work from that distilled summary — never
+       paste raw page HTML into your own context. From the summary, either
+       author a GitHub issue (via `gh` in the terminal) or implement the code,
+       as the user asked.
+
+executor:
+  # OpenAI-compatible harness — the dependency-light fit for a local Ollama
+  # gateway. (Claude/cursor/copilot harnesses target vendor backends instead.)
+  harness: openai-agents
+  model: qwen3.8-27b-32k            # the model name as pulled in Ollama
+  auth:
+    type: api_key
+    api_key: ${OLLAMA_KEY}         # Ollama ignores the value; any non-empty string
+    base_url: http://localhost:11434/v1
+
+# Local OS access: Omnigent provides native sys_os_* file tools + a terminal,
+# so no custom Python tool module is needed. git / grep / gh run in the terminal.
+os_env:
+  type: caller_process
+  cwd: .
+  sandbox:
+    type: linux_bwrap              # Linux default; needs bubblewrap. omit for auto.
+    write_paths:
+      - .
+    allow_network: true            # needed for `gh` (GitHub API)
+    # --- OPTIONAL: Databricks CLI secretless credential proxy ---------------
+    # Lets the sandboxed agent run `databricks` against your workspace WITHOUT
+    # the real OAuth token ever entering the sandbox: the egress proxy swaps a
+    # placeholder for the real Bearer token on the way out. Requires egress_rules
+    # listing each workspace host, and linux_bwrap (not seatbelt). OAuth tokens
+    # auto-refresh for the session. Uncomment and set your profiles + hosts:
+    #
+    # egress_rules:
+    #   - "*github.com/**"
+    #   - "*api.github.com/**"
+    #   - "*<your-workspace-host>.cloud.databricks.com/**"
+    # credential_proxy:
+    #   - type: databricks_cli
+    #     profiles: [<profile-a>, <profile-b>]   # only these are visible in-sandbox
+    #     default: <profile-a>                   # sets DATABRICKS_CONFIG_PROFILE
+    #   - type: gh_basic                         # same idea for gh/git over HTTPS
+    #     source: {command: gh auth token}
+    # -----------------------------------------------------------------------
+
+terminals:
+  bash:
+    command: bash
+    args: [-l]
+    os_env: inherit
+
+tools:
+  # --- Web fetch: turn a URL into clean markdown (readability-extracted) ---
+  # The reference MCP fetch server, run via uvx (uv is already installed; no
+  # Node needed). It strips nav/scripts/boilerplate and is SSRF-guarded, so the
+  # agent gets distilled page content without a wall of raw HTML.
+  fetch:
+    type: mcp
+    command: uvx
+    args:
+      - mcp-server-fetch
+
+  # --- Sub-agents: each runs in its OWN fresh context window ---
+
+  # Fetches a URL and distills it. Keeps raw page content OUT of other windows.
+  reader:
+    type: agent
+    description: Fetch a URL or official doc page and return a concise summary.
+    prompt: |
+      You are given a URL — a user-supplied link OR an official documentation
+      page (Terraform registry, docs.databricks.com, a library's docs/PyPI).
+      Use the `fetch` tool to retrieve it as markdown, then return a CONCISE
+      summary of what it describes: key concepts, required steps, and the exact
+      API/argument/schema details relevant to implementing it or writing an
+      issue. When documenting an API, capture signatures/argument names/field
+      names verbatim. Do NOT paste the full page back — summarize in <=40 lines.
+    tools:
+      fetch: inherit
+    pass_history: false
+
+  # Finds relevant files WITHOUT dumping them. Returns paths + one-line reasons.
+  locate:
+    type: agent
+    description: Locate files relevant to a task; return paths + reasons only.
+    prompt: |
+      You locate the files relevant to a task. Search with `grep -rn` in the
+      bash terminal. Return ONLY a short list of file paths, each with a one-line
+      reason. Never paste file contents. Keep output under 30 lines.
+    os_env: inherit
+    pass_history: false
+
+  # Implements a scoped change; shows the diff. Does not explore broadly.
+  coder:
+    type: agent
+    description: Implement a well-scoped change in given paths.
+    prompt: |
+      You implement a specific, well-scoped change in the file paths you are
+      given. Do not hunt through the rest of the repo.
+
+      If unsure about an API, argument, resource, or schema, fetch the OFFICIAL
+      docs (see AGENTS.md "Documentation lookup", matching the repo's pinned
+      versions) before writing — do not guess from memory.
+
+      VALIDATE-IN-THE-LOOP — after editing, run the validator that matches the
+      file type, then FIX any errors and re-run until it passes. Only then show
+      the diff. Never present code you have not validated.
+        - Python (*.py):            ruff format . && ruff check .
+        - Terraform (*.tf/*.tfvars): terraform fmt && terraform validate
+        - Databricks bundle (*.yml under a bundle): databricks bundle validate
+      Then show `git diff` for just the paths you changed, and state which
+      validator you ran and that it passed.
+    os_env: inherit
+    pass_history: true
+
+  # Reviews a diff in a fresh window — unbiased and small.
+  reviewer:
+    type: agent
+    description: Review a unified diff for correctness and best practice.
+    prompt: |
+      You review a unified diff for correctness, security, and Terraform/
+      Databricks best practice. You are given the diff directly — do NOT reload
+      the repo. Output: blocking issues, then nits, then an approve / request-
+      changes verdict. Be concise.
+    os_env: inherit
+    pass_history: false
+
+policies:
+  # Bound how many tool calls one session makes (limits context growth + runaway).
+  cap_calls:
+    type: function
+    handler: omnigent.policies.builtins.safety.max_tool_calls_per_session
+    factory_params:
+      limit: 60
+  # Pause for approval before shell / OS actions (git push, gh pr merge, etc.).
+  approve_shell:
+    type: function
+    handler: omnigent.policies.builtins.safety.ask_on_os_tools
