@@ -1,0 +1,2 @@
+model: ollama_chat/gemma4:12b
+map-tokens: 32000
