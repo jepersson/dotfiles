@@ -16,6 +16,9 @@ export HISTCONTROL=ignoreboth:erasedups
 # Bare Repository Management for dotfiles
 alias dotfiles='git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
+# Environment variables for pointing Aider to Ollama on Windows
+export OLLAMA_API_BASE=http://127.0.0.1:11434
+
 # Terminal title (User@Host)
 export PS1="\[\033]0;\u@\h\007\]"               
 
